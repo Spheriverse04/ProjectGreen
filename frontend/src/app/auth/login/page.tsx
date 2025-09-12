@@ -18,6 +18,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const res = await api.post('/auth/login', { email, password });
+      console.log('Login response:', res.data);
 
       localStorage.setItem('access_token', res.data.access_token);
       localStorage.setItem('role', res.data.role);

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import axios from 'axios';
+import api from '@/utils/axiosInstance';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -24,7 +24,7 @@ export default function RegisterPage() {
     if (!phone) return setMessage('Please enter your phone number');
     setLoading(true);
     try {
-      await axios.post('http://localhost:3000/auth/send-otp', { phone });
+      await api.post('/auth/send-otp', { phone });
       setOtpSent(true);
       setMessage('OTP sent successfully!');
     } catch (err: any) {
@@ -38,7 +38,7 @@ export default function RegisterPage() {
     if (!otp) return setMessage('Please enter OTP');
     setLoading(true);
     try {
-      const res = await axios.post('http://localhost:3000/auth/verify-otp', {
+      const res = await api.post('/auth/verify-otp', {
         phone,
         token: otp,
       });
@@ -62,7 +62,7 @@ export default function RegisterPage() {
     
     setLoading(true);
     try {
-      await axios.post('http://localhost:3000/auth/register', {
+      await api.post('/auth/register', {
         name,
         email,
         phone,
@@ -126,7 +126,6 @@ export default function RegisterPage() {
               >
                 <option value="CITIZEN">Citizen</option>
                 <option value="WORKER">Waste Worker</option>
-                <option value="ADMIN">Administrator</option>
               </select>
             </div>
 

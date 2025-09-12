@@ -1,42 +1,39 @@
-// src/app/dashboard/admin/page.tsx
 'use client';
 
-import { useEffect, useState } from 'react';
-import api from '@/utils/axiosInstance';
+import Link from 'next/link';
+import RoleGuard from '@/components/RoleGuard';
 
 export default function AdminDashboard() {
-  const [user, setUser] = useState<any>(null);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    const fetchUser = async () => {
-      const token = localStorage.getItem('access_token');
-      if (!token) {
-        setError('No token found, please login');
-        return;
-      }
-
-      try {
-        const res = await api.post('/auth/check', {}, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setUser(res.data.user);
-      } catch (err: any) {
-        setError(err.response?.data?.message || 'Failed to fetch user');
-      }
-    };
-
-    fetchUser();
-  }, []);
-
-  if (error) return <p className="text-red-500">{error}</p>;
-  if (!user) return <p>Loading...</p>;
-
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">Admin Dashboard</h1>
-      <pre>{JSON.stringify(user, null, 2)}</pre>
-    </div>
+    <RoleGuard role="ADMIN">
+      <div className="p-6">
+        <h1 className="text-3xl font-bold mb-6">Admin Dashboard</h1>
+        <p className="mb-4">Welcome, Admin 👋</p>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Link href="/auth/dashboard/admin/training">
+            <div className="p-6 bg-blue-100 rounded-lg shadow hover:bg-blue-200 cursor-pointer">
+              <h2 className="text-xl font-semibold">📚 Training Modules</h2>
+              <p className="text-sm mt-2">Manage modules, flashcards, videos, and quizzes.</p>
+            </div>
+          </Link>
+
+          <Link href="/auth/dashboard/admin/users">
+            <div className="p-6 bg-green-100 rounded-lg shadow hover:bg-green-200 cursor-pointer">
+              <h2 className="text-xl font-semibold">👥 Users</h2>
+              <p className="text-sm mt-2">(Optional) Manage registered users.</p>
+            </div>
+          </Link>
+
+          <Link href="/auth/dashboard/admin/reports">
+            <div className="p-6 bg-yellow-100 rounded-lg shadow hover:bg-yellow-200 cursor-pointer">
+              <h2 className="text-xl font-semibold">📊 Reports</h2>
+              <p className="text-sm mt-2">(Optional) Track learning progress.</p>
+            </div>
+          </Link>
+        </div>
+      </div>
+    </RoleGuard>
   );
 }
 

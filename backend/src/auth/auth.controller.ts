@@ -16,6 +16,8 @@ import { JwtAuthGuard } from './jwt-auth.guard';
 import { Roles } from './roles.decorator';
 import { RolesGuard } from './roles.guard';
 
+type RoleType = 'ADMIN' | 'WORKER' | 'CITIZEN';
+
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -28,9 +30,12 @@ export class AuthController {
   @Post('register')
   async register(
     @Body()
-    dto: { email: string; password: string; name: string; phone: string },
+    dto: { email: string; password: string; name: string; phone: string; role?: RoleType },
   ) {
-    return this.auth.registerLocal(dto.email, dto.password, dto.name, dto.phone);
+    const allowedRoles: RoleType[] = ['ADMIN', 'WORKER', 'CITIZEN'];
+    const role = allowedRoles.includes(dto.role as RoleType) ? dto.role! : 'CITIZEN';
+
+    return this.auth.registerLocal(dto.email, dto.password, dto.name, dto.phone, role);
   }
 
   // 🔹 Local login
@@ -73,16 +78,11 @@ export class AuthController {
   // 🔹 Reset password
   @Post('reset-password')
   async resetPassword(@Body() dto: { phone: string; newPassword: string }) {
-    const user = await this.prisma.user.findUnique({
-      where: { phone: dto.phone },
-    });
+    const user = await this.prisma.user.findUnique({ where: { phone: dto.phone } });
     if (!user) throw new NotFoundException('User not found');
 
     const hash = await bcrypt.hash(dto.newPassword, 10);
-    return this.prisma.user.update({
-      where: { phone: dto.phone },
-      data: { password: hash },
-    });
+    return this.prisma.user.update({ where: { phone: dto.phone }, data: { password: hash } });
   }
 
   // 🔹 Supabase-protected test route
@@ -92,7 +92,7 @@ export class AuthController {
     return { supabaseUser: req.user };
   }
 
-  // 🔹 Example: Protected route only for ADMIN
+  // 🔹 Protected route: only ADMIN
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
   @Post('admin-dashboard')
@@ -100,7 +100,7 @@ export class AuthController {
     return { message: `Welcome Admin ${req.user.email}`, user: req.user };
   }
 
-  // 🔹 Example: Protected route only for WORKER
+  // 🔹 Protected route: only WORKER
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('WORKER')
   @Post('worker-dashboard')

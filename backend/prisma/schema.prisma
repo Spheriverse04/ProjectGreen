@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -19,6 +13,11 @@ enum Role {
   CITIZEN
 }
 
+enum QuestionType {
+  MCQ
+  SUBJECTIVE
+}
+
 model User {
   id        String   @id @default(uuid())
   name      String
@@ -29,5 +28,57 @@ model User {
   gender    String?
   role      Role     @default(CITIZEN)
   createdAt DateTime @default(now())
+}
+
+model TrainingModule {
+  id        String   @id @default(uuid())
+  title     String
+  role      Role
+  createdAt DateTime @default(now())
+  flashcards Flashcard[]
+  videos    Video[]
+  quizzes   Quiz[]
+}
+
+model Flashcard {
+  id        String   @id @default(uuid())
+  moduleId  String
+  module    TrainingModule @relation(fields: [moduleId], references: [id])
+  question  String
+  answer    String
+}
+
+model Video {
+  id        String   @id @default(uuid())
+  moduleId  String
+  module    TrainingModule @relation(fields: [moduleId], references: [id])
+  title     String
+  url       String
+}
+
+model Quiz {
+  id        String   @id @default(uuid())
+  moduleId  String
+  module    TrainingModule @relation(fields: [moduleId], references: [id])
+  title     String
+  questions QuizQuestion[]
+}
+
+model QuizQuestion {
+  id       String   @id @default(uuid())
+  quizId   String
+  quiz     Quiz @relation(fields: [quizId], references: [id])
+  type     QuestionType
+  question String
+  options  QuizOption[]
+  answer   String?
+}
+
+model QuizOption {
+  id         String   @id @default(uuid())
+  questionId String
+  question   QuizQuestion @relation(fields: [questionId], references: [id])
+  text       String
+  isCorrect  Boolean @default(false)
 }
 
