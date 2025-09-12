@@ -43,8 +43,13 @@ export default function TrainingModulesPage() {
   // Create module (Admin only)
   const createModule = async () => {
     if (!title) return setMessage('Title is required');
+    
+    console.log('Creating module with:', { title, role });
+    
     try {
       const token = localStorage.getItem('access_token');
+      console.log('Using token:', token ? 'Token exists' : 'No token');
+      
       await api.post(
         '/training/modules',
         { title, role },
@@ -55,6 +60,7 @@ export default function TrainingModulesPage() {
       setMessage('Module created successfully!');
       fetchModules();
     } catch (err: any) {
+      console.error('Error creating module:', err.response?.data || err.message);
       setMessage(err.response?.data?.message || 'Failed to create module');
     }
   };
@@ -143,4 +149,5 @@ export default function TrainingModulesPage() {
     </div>
   );
 }
+
 

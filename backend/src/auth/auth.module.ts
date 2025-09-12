@@ -8,7 +8,6 @@ import { SupabaseStrategy } from './strategies/supabase.strategy';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { RolesGuard } from './roles.guard';
-import { APP_GUARD } from '@nestjs/core';
 
 @Module({
   imports: [
@@ -28,13 +27,11 @@ import { APP_GUARD } from '@nestjs/core';
     LocalStrategy,
     SupabaseStrategy,
     JwtStrategy,
-    {
-      provide: APP_GUARD,
-      useClass: RolesGuard, // ✅ global roles guard
-    },
+    RolesGuard,
   ],
   controllers: [AuthController],
   exports: [JwtModule, AuthService],
 })
 export class AuthModule {}
+
 

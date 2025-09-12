@@ -1,6 +1,7 @@
 import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ROLES_KEY } from './roles.decorator';
+import { Role } from '@prisma/client';
 
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -8,7 +9,7 @@ export class RolesGuard implements CanActivate {
 
   canActivate(context: ExecutionContext): boolean {
     const requiredRoles =
-      this.reflector.getAllAndOverride<string[]>(ROLES_KEY, [
+      this.reflector.getAllAndOverride<Role[]>(ROLES_KEY, [
         context.getHandler(),
         context.getClass(),
       ]);
@@ -19,12 +20,18 @@ export class RolesGuard implements CanActivate {
     const user = request.user;
 
     if (!user || !user.role) {
+      console.log('RolesGuard: No user or role found', { user });
       return false;
     }
 
-    // ✅ Normalize both sides to uppercase string
-    const userRole = user.role.toString().toUpperCase();
-    return requiredRoles.some((role) => role.toString().toUpperCase() === userRole);
+    console.log('RolesGuard: Checking roles', { 
+      userRole: user.role, 
+      requiredRoles,
+      hasAccess: requiredRoles.includes(user.role)
+    });
+
+    return requiredRoles.includes(user.role);
   }
 }
+
 
