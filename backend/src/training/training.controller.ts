@@ -1,9 +1,12 @@
-import { Controller, Post, Body, Get, Query, Delete, Param, Put, UseGuards } from '@nestjs/common';
+import { 
+  Controller, Post, Body, Get, Query, Delete, Param, Put, UseGuards 
+} from '@nestjs/common';
 import { TrainingService } from './training.service';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Role, QuestionType } from '@prisma/client';
+import { AuthUser } from '../auth/auth-user.decorator';
 
 @Controller('training')
 @UseGuards(JwtAuthGuard)
@@ -11,29 +14,23 @@ export class TrainingController {
   constructor(private trainingService: TrainingService) {}
 
   // ------------------ MODULES ------------------
-
-  // Create module - ADMIN only
   @Post('modules')
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
   async createModule(@Body() dto: { title: string; role: Role }) {
-    console.log('Creating module with data:', dto);
     return this.trainingService.createModule(dto.title, dto.role);
   }
 
-  // Get all modules - accessible by any authenticated user
   @Get('modules')
-  async getModules(@Query('role') role?: Role) {
-    return this.trainingService.getModules(role);
+  async getModules(@Query('role') role?: Role, @AuthUser() user?: any) {
+    return this.trainingService.getModules(role, user?.id);
   }
 
-  // Get single module by ID
   @Get('modules/:id')
-  async getModule(@Param('id') id: string) {
-    return this.trainingService.getModuleById(id);
+  async getModule(@Param('id') id: string, @AuthUser() user?: any) {
+    return this.trainingService.getModuleById(id, user?.id);
   }
 
-  // Delete module - ADMIN only
   @Delete('modules/:id')
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
@@ -41,8 +38,34 @@ export class TrainingController {
     return this.trainingService.deleteModule(id);
   }
 
-  // ------------------ FLASHCARDS ------------------
+  // ------------------ USER PROGRESS ------------------
+  @Get('user/progress')
+  async getUserProgress(@AuthUser() user: any) {
+    return this.trainingService.getUserProgress(user.id);
+  }
 
+@Post('progress')
+async recordProgress(
+  @AuthUser() user: any,
+  @Body() dto: { moduleId: string; type: string; itemId: string; status: string; xp: number; score?: number },
+) {
+  console.log('Auth user in controller:', user);
+  console.log('DTO in controller:', dto);
+
+  return this.trainingService.recordProgress(
+    user.sub,   // or user.sub depending on payload
+    dto.moduleId,
+    dto.type,
+    dto.itemId,
+    dto.status,
+    dto.xp,
+    dto.score,
+  );
+}
+
+
+
+  // ------------------ FLASHCARDS ------------------
   @Post('flashcards')
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
@@ -65,7 +88,6 @@ export class TrainingController {
   }
 
   // ------------------ VIDEOS ------------------
-
   @Post('videos')
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
@@ -88,7 +110,6 @@ export class TrainingController {
   }
 
   // ------------------ QUIZZES ------------------
-
   @Post('quizzes')
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
@@ -104,11 +125,18 @@ export class TrainingController {
   }
 
   // ------------------ QUIZ QUESTIONS ------------------
-
   @Post('questions')
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
-  async addQuizQuestion(@Body() dto: { quizId: string; type: QuestionType; question: string; answer?: string; options?: { text: string; isCorrect: boolean }[] }) {
+  async addQuizQuestion(
+    @Body() dto: {
+      quizId: string;
+      type: QuestionType;
+      question: string;
+      answer?: string;
+      options?: { text: string; isCorrect: boolean }[];
+    },
+  ) {
     return this.trainingService.addQuizQuestion(dto.quizId, dto.type, dto.question, dto.answer, dto.options);
   }
 
@@ -120,7 +148,6 @@ export class TrainingController {
   }
 
   // ------------------ QUIZ OPTIONS ------------------
-
   @Post('options')
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
@@ -135,5 +162,4 @@ export class TrainingController {
     return this.trainingService.deleteQuizOption(id);
   }
 }
-
 
