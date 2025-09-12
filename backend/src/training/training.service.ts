@@ -14,7 +14,28 @@ export class TrainingService {
   async getModules(role?: Role) {
     return this.prisma.trainingModule.findMany({
       where: role ? { role } : {},
-      include: { flashcards: true, videos: true, quizzes: { include: { questions: true } } },
+      include: { 
+        flashcards: true, 
+        videos: true, 
+        quizzes: { include: { questions: { include: { options: true } } } } 
+      },
+    });
+  }
+  
+  async getModuleById(id: string) {
+    return this.prisma.trainingModule.findUnique({
+      where: { id },
+      include: {
+        flashcards: true,
+        videos: true,
+        quizzes: {
+          include: {
+            questions: {
+              include: { options: true }
+            }
+          }
+        }
+      }
     });
   }
 
@@ -58,8 +79,32 @@ export class TrainingService {
   }
 
   // ------------------ QUIZ QUESTIONS ------------------
-  async addQuizQuestion(quizId: string, type: QuestionType, question: string, answer?: string) {
-    return this.prisma.quizQuestion.create({ data: { quizId, type, question, answer } });
+  async addQuizQuestion(
+    quizId: string, 
+    type: QuestionType, 
+    question: string, 
+    answer?: string, 
+    options?: { text: string; isCorrect: boolean }[]
+  ) {
+    const createdQuestion = await this.prisma.quizQuestion.create({
+      data: { quizId, type, question, answer },
+    });
+
+    if (type === 'MCQ' && options && options.length > 0) {
+      await this.prisma.quizOption.createMany({
+        data: options.map(o => ({
+          questionId: createdQuestion.id,
+          text: o.text,
+          isCorrect: o.isCorrect,
+        })),
+      });
+    }
+
+    // return question with options included
+    return this.prisma.quizQuestion.findUnique({
+      where: { id: createdQuestion.id },
+      include: { options: true },
+    });
   }
 
   async deleteQuizQuestion(id: string) {

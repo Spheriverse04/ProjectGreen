@@ -27,6 +27,12 @@ export class TrainingController {
     return this.trainingService.getModules(role);
   }
 
+  // Get single module by ID
+  @Get('modules/:id')
+  async getModule(@Param('id') id: string) {
+    return this.trainingService.getModuleById(id);
+  }
+
   // Delete module - ADMIN only
   @Delete('modules/:id')
   @UseGuards(RolesGuard)
@@ -102,8 +108,8 @@ export class TrainingController {
   @Post('questions')
   @UseGuards(RolesGuard)
   @Roles(Role.ADMIN)
-  async addQuizQuestion(@Body() dto: { quizId: string; type: QuestionType; question: string; answer?: string }) {
-    return this.trainingService.addQuizQuestion(dto.quizId, dto.type, dto.question, dto.answer);
+  async addQuizQuestion(@Body() dto: { quizId: string; type: QuestionType; question: string; answer?: string; options?: { text: string; isCorrect: boolean }[] }) {
+    return this.trainingService.addQuizQuestion(dto.quizId, dto.type, dto.question, dto.answer, dto.options);
   }
 
   @Delete('questions/:id')
