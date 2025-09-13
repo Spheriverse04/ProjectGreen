@@ -49,7 +49,7 @@ export class CivicReportController {
 
     return this.civicReportService.createReport({
       title,
-      description,
+      description: description || '',
       type,
       latitude: parseFloat(latitude),
       longitude: parseFloat(longitude),
@@ -59,13 +59,25 @@ export class CivicReportController {
   }
 
   @Get()
-  async getAllReports() {
-    return this.civicReportService.getAllReports();
+  async getAllReports(@AuthUser() authUser: { userId: string }) {
+    return this.civicReportService.getAllReports(authUser.userId);
+  }
+
+  @Get('my-reports')
+  @Roles('CITIZEN')
+  async getMyReports(@AuthUser() authUser: { userId: string }) {
+    return this.civicReportService.getMyReports(authUser.userId);
+  }
+
+  @Get('other-reports')
+  @Roles('CITIZEN')
+  async getOtherReports(@AuthUser() authUser: { userId: string }) {
+    return this.civicReportService.getOtherReports(authUser.userId);
   }
 
   @Get(':id')
-  async getReportById(@Param('id') id: string) {
-    return this.civicReportService.getReportById(id);
+  async getReportById(@Param('id') id: string, @AuthUser() authUser: { userId: string }) {
+    return this.civicReportService.getReportById(id, authUser.userId);
   }
 
   @Post(':id/support')
@@ -80,4 +92,3 @@ export class CivicReportController {
     return this.civicReportService.opposeReport(id, authUser.userId);
   }
 }
-
