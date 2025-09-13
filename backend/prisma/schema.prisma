@@ -18,6 +18,9 @@ enum QuestionType {
   SUBJECTIVE
 }
 
+// ========================
+// User Model
+// ========================
 model User {
   id        String   @id @default(uuid())
   name      String
@@ -27,15 +30,20 @@ model User {
   age       Int?
   gender    String?
   role      Role     @default(CITIZEN)
-  totalXp   Int      @default(0)   // Total XP earned
+  totalXp   Int      @default(0)
   createdAt DateTime @default(now())
 
-  moduleProgress   UserModuleProgress[]
+  moduleProgress    UserModuleProgress[]
   flashcardProgress UserFlashcardProgress[]
   videoProgress     UserVideoProgress[]
   quizProgress      UserQuizProgress[]
+  civicReports      CivicReport[]           // reports created by this user
+  reportSupport     CivicReportSupport[]    // supports/opposes by this user
 }
 
+// ========================
+// Training Models
+// ========================
 model TrainingModule {
   id        String   @id @default(uuid())
   title     String
@@ -99,7 +107,6 @@ model QuizOption {
 // ========================
 // User Progress Models
 // ========================
-
 model UserModuleProgress {
   id         String   @id @default(uuid())
   userId     String
@@ -155,5 +162,57 @@ model UserQuizProgress {
   quiz Quiz @relation(fields: [quizId], references: [id])
 
   @@unique([userId, quizId])
+}
+
+// ========================
+// Civic Reporting Models
+// ========================
+model CivicReport {
+  id              String       @id @default(uuid())
+  title           String
+  description     String
+  type            ReportType
+  imageUrl        String?
+  latitude        Float
+  longitude       Float
+  createdById     String
+  supportCount    Int          @default(0)
+  oppositionCount Int          @default(0)
+  status          ReportStatus @default(pending)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  createdBy       User @relation(fields: [createdById], references: [id])
+  supports        CivicReportSupport[]
+}
+
+model CivicReportSupport {
+  id        String @id @default(uuid())
+  reportId  String
+  userId    String
+  support   Boolean // true = support, false = oppose
+  createdAt DateTime @default(now())
+
+  report CivicReport @relation(fields: [reportId], references: [id])
+  user   User        @relation(fields: [userId], references: [id])
+
+  @@unique([reportId, userId])
+}
+
+enum ReportType {
+  illegal_dumping
+  open_toilet
+  dirty_toilet
+  overflow_dustbin
+  dead_animal
+  fowl
+  public_bin_request
+  public_toilet_request
+}
+
+enum ReportStatus {
+  pending
+  escalated
+  resolved
 }
 

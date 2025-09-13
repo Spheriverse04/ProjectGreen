@@ -5,6 +5,7 @@ import { UserModule } from './user/user.module';
 import { AuthModule } from './auth/auth.module';
 import { SupabaseModule } from './supabase/supabase.module';
 import { TrainingModule } from './training/training.module';
+import { CivicReportModule } from './civic-report/civic-report.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { TrainingModule } from './training/training.module';
     AuthModule,
     SupabaseModule,
     TrainingModule,
+    CivicReportModule,
   ],
 })
 export class AppModule {}
