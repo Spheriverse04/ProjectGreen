@@ -23,12 +23,13 @@ export class TrainingController {
 
   @Get('modules')
   async getModules(@Query('role') role?: Role, @AuthUser() user?: any) {
-    return this.trainingService.getModules(role, user?.id);
+    const fetchRole = role || user?.role;
+    return this.trainingService.getModules(fetchRole, user?.sub);
   }
 
   @Get('modules/:id')
   async getModule(@Param('id') id: string, @AuthUser() user?: any) {
-    return this.trainingService.getModuleById(id, user?.id);
+    return this.trainingService.getModuleById(id, user?.sub);
   }
 
   @Delete('modules/:id')
@@ -39,31 +40,32 @@ export class TrainingController {
   }
 
   // ------------------ USER PROGRESS ------------------
-  @Get('user/progress')
-  async getUserProgress(@AuthUser() user: any) {
-    return this.trainingService.getUserProgress(user.id);
+  @Get('modules/:moduleId/progress')
+  async getModuleProgress(@Param('moduleId') moduleId: string, @AuthUser() user: any) {
+    return this.trainingService.getModuleProgress(user.sub, moduleId);
   }
 
-@Post('progress')
-async recordProgress(
-  @AuthUser() user: any,
-  @Body() dto: { moduleId: string; type: string; itemId: string; status: string; xp: number; score?: number },
-) {
-  console.log('Auth user in controller:', user);
-  console.log('DTO in controller:', dto);
+  @Post('progress')
+  async recordProgress(
+    @AuthUser() user: any,
+    @Body() dto: { moduleId: string; type: string; itemId: string; status: string; xp: number; score?: number },
+  ) {
+    return this.trainingService.recordProgress(
+      user.sub,
+      dto.moduleId,
+      dto.type,
+      dto.itemId,
+      dto.status,
+      dto.xp,
+      dto.score,
+    );
+  }
 
-  return this.trainingService.recordProgress(
-    user.sub,   // or user.sub depending on payload
-    dto.moduleId,
-    dto.type,
-    dto.itemId,
-    dto.status,
-    dto.xp,
-    dto.score,
-  );
-}
-
-
+  // ------------------ USER OVERALL PROGRESS ------------------
+  @Get('user/progress')
+  async getUserProgress(@AuthUser() user: any) {
+    return this.trainingService.getUserOverallProgress(user.sub, user.role);
+  }
 
   // ------------------ FLASHCARDS ------------------
   @Post('flashcards')

@@ -53,12 +53,36 @@ export default function WorkerModulePage() {
     }
   };
 
+  const recordProgress = async (type: 'FLASHCARD' | 'VIDEO' | 'QUIZ', itemId: string, status: 'COMPLETED' | 'MASTERED', xp: number) => {
+    try {
+      await api.post(
+        `/training/progress`,
+        { moduleId, type, itemId, status, xp },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+    } catch (err) {
+      console.error('Failed to record progress', err);
+    }
+  };
+
   useEffect(() => {
     fetchModule();
   }, [moduleId]);
 
   const handleFlip = (id: string) => {
     setFlipped((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const handleMasterCard = (id: string) => {
+    recordProgress('FLASHCARD', id, 'MASTERED', 10);
+    setMessage('Flashcard mastered! +10 XP');
+    setTimeout(() => setMessage(''), 3000);
+  };
+
+  const handleVideoWatched = (videoId: string) => {
+    recordProgress('VIDEO', videoId, 'COMPLETED', 15);
+    setMessage('Video completed! +15 XP');
+    setTimeout(() => setMessage(''), 3000);
   };
 
   const handleOptionSelect = (optionId: string) => {
@@ -81,6 +105,8 @@ export default function WorkerModulePage() {
       setSubmitted(false);
     } else {
       setShowScore(true);
+      const totalXP = score * 25 + (score >= quiz.questions.length * 0.8 ? 50 : 25);
+      recordProgress('QUIZ', quiz.id, 'COMPLETED', totalXP);
     }
   };
 
@@ -101,14 +127,24 @@ export default function WorkerModulePage() {
             <h2 className="text-xl font-semibold mb-2">Flashcards</h2>
             <ul className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {flashcards.map((f) => (
-                <li key={f.id} className="relative perspective cursor-pointer" onClick={() => handleFlip(f.id)}>
+                <li key={f.id} className="relative perspective">
                   <div className={clsx(
                     'transition-transform duration-500 transform rounded shadow p-4 text-center',
                     flipped[f.id] ? 'rotate-y-180 bg-blue-100' : 'bg-white'
-                  )}>
+                  )} onClick={() => handleFlip(f.id)}>
                     {flipped[f.id] ? <p><strong>A:</strong> {f.answer}</p> : <p><strong>Q:</strong> {f.question}</p>}
                     <p className="text-sm text-gray-400 mt-2">(click to flip)</p>
                   </div>
+                  {flipped[f.id] && (
+                    <div className="mt-2 text-center">
+                      <button
+                        onClick={() => handleMasterCard(f.id)}
+                        className="px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600"
+                      >
+                        Master (+10 XP)
+                      </button>
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>
@@ -143,6 +179,14 @@ export default function WorkerModulePage() {
                     ) : (
                       <video src={v.url} controls className="w-full rounded" />
                     )}
+                    <div className="mt-2">
+                      <button
+                        onClick={() => handleVideoWatched(v.id)}
+                        className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                      >
+                        Mark as Watched (+15 XP)
+                      </button>
+                    </div>
                   </li>
                 );
               })}
@@ -203,6 +247,9 @@ export default function WorkerModulePage() {
                 <p className="text-xl mt-2">
                   Your Score: {score} / {currentQuiz.questions.filter(q => q.type === 'MCQ').length}
                 </p>
+                <p className="text-lg text-blue-600 mt-2">
+                  +{score * 25 + (score >= currentQuiz.questions.length * 0.8 ? 50 : 25)} XP Earned!
+                </p>
                 <button
                   onClick={() => {
                     setCurrentQuestionIndex(0);
@@ -220,9 +267,18 @@ export default function WorkerModulePage() {
           </section>
         )}
 
-        {message && <p className="text-red-500">{message}</p>}
+        {message && (
+          <div className={`p-4 rounded-xl text-sm ${
+            message.includes('XP') || message.includes('completed') || message.includes('mastered')
+              ? 'bg-green-50 text-green-700 border border-green-200' 
+              : 'bg-red-50 text-red-700 border border-red-200'
+          }`}>
+            {message}
+          </div>
+        )}
       </div>
     </RoleGuard>
   );
 }
+
 

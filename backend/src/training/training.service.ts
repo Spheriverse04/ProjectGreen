@@ -22,16 +22,10 @@ export class TrainingService {
       },
     });
 
-    if (userId) {
-      return modules.map((module) => {
-        const progress = module.userProgress?.[0];
-        return {
-          ...module,
-          userProgress: progress ? [progress] : [],
-        };
-      });
-    }
-    return modules;
+    return modules.map((m) => ({
+      ...m,
+      userProgress: userId ? m.userProgress || [] : undefined,
+    }));
   }
 
   async getModuleById(id: string, userId?: string) {
@@ -47,15 +41,10 @@ export class TrainingService {
 
     if (!module) return null;
 
-    if (userId) {
-      const progress = module.userProgress?.[0];
-      return {
-        ...module,
-        userProgress: progress ? [progress] : [],
-      };
-    }
-
-    return module;
+    return {
+      ...module,
+      userProgress: userId ? module.userProgress || [] : undefined,
+    };
   }
 
   async deleteModule(id: string) {
@@ -63,41 +52,117 @@ export class TrainingService {
   }
 
   // ------------------ USER PROGRESS ------------------
-  async getUserProgress(userId: string) {
-    const modules = await this.prisma.trainingModule.findMany({
-      include: {
-        userProgress: { where: { userId } },
-      },
+  async getModuleProgress(userId: string, moduleId: string) {
+    const flashcards = await this.prisma.userFlashcardProgress.findMany({
+      where: { userId, flashcard: { moduleId } },
+    });
+    const videos = await this.prisma.userVideoProgress.findMany({
+      where: { userId, video: { moduleId } },
+    });
+    const quizzes = await this.prisma.userQuizProgress.findMany({
+      where: { userId, quiz: { moduleId } },
     });
 
-    const completedModules = modules.filter(m => m.userProgress?.[0]?.completed).length;
-    const totalModules = modules.length;
+    // Aggregate XP safely
+    const flashcardsXP = await this.prisma.userFlashcardProgress.aggregate({
+      where: { userId, flashcardId: { in: flashcards.map(f => f.flashcardId) } },
+      _sum: { xpEarned: true },
+    });
+    const videosXP = await this.prisma.userVideoProgress.aggregate({
+      where: { userId, videoId: { in: videos.map(v => v.videoId) } },
+      _sum: { xpEarned: true },
+    });
+    const quizzesXP = await this.prisma.userQuizProgress.aggregate({
+      where: { userId, quizId: { in: quizzes.map(q => q.quizId) } },
+      _sum: { xpEarned: true },
+    });
 
-    const xp = modules.reduce(
-      (acc, m) => acc + (m.userProgress?.[0]?.xpEarned || 0),
-      0
-    );
+    const totalXP =
+      (flashcardsXP._sum?.xpEarned || 0) +
+      (videosXP._sum?.xpEarned || 0) +
+      (quizzesXP._sum?.xpEarned || 0);
 
-    const level = Math.floor(xp / 100); // 100 XP = level up
-    const xpToNext = 100 - (xp % 100);
-
-    return {
-      level,
-      xp,
-      xpToNext,
-      completedModules,
-      totalModules,
-      streak: 0,
-      achievements: [],
-    };
+    return { flashcards, videos, quizzes, totalXP };
   }
 
-  async upsertModuleProgress(
+  async recordProgress(
     userId: string,
     moduleId: string,
-    completed = false,
-    xpEarned = 0,
+    type: string,
+    itemId: string,
+    status: string,
+    xp: number,
+    score?: number,
   ) {
+    let result;
+
+    switch (type) {
+      case 'FLASHCARD':
+        result = await this.prisma.userFlashcardProgress.upsert({
+          where: { userId_flashcardId: { userId, flashcardId: itemId } },
+          update: {
+            mastered: status === 'MASTERED',
+            xpEarned: xp,
+            completedAt: status === 'MASTERED' ? new Date() : null,
+          },
+          create: {
+            userId,
+            flashcardId: itemId,
+            mastered: status === 'MASTERED',
+            xpEarned: xp,
+            completedAt: status === 'MASTERED' ? new Date() : null,
+          },
+        });
+        break;
+
+      case 'VIDEO':
+        result = await this.prisma.userVideoProgress.upsert({
+          where: { userId_videoId: { userId, videoId: itemId } },
+          update: {
+            watched: status === 'COMPLETED',
+            xpEarned: xp,
+            completedAt: status === 'COMPLETED' ? new Date() : null,
+          },
+          create: {
+            userId,
+            videoId: itemId,
+            watched: status === 'COMPLETED',
+            xpEarned: xp,
+            completedAt: status === 'COMPLETED' ? new Date() : null,
+          },
+        });
+        break;
+
+      case 'QUIZ':
+        result = await this.prisma.userQuizProgress.upsert({
+          where: { userId_quizId: { userId, quizId: itemId } },
+          update: {
+            score: status === 'COMPLETED' ? score ?? 0 : null,
+            xpEarned: xp,
+            completedAt: status === 'COMPLETED' ? new Date() : null,
+          },
+          create: {
+            userId,
+            quizId: itemId,
+            score: status === 'COMPLETED' ? score ?? 0 : null,
+            xpEarned: xp,
+            completedAt: status === 'COMPLETED' ? new Date() : null,
+          },
+        });
+        break;
+
+      default:
+        throw new Error(`Unsupported progress type: ${type}`);
+    }
+
+    // --- AUTO UPDATE MODULE PROGRESS ---
+    await this.updateModuleCompletion(userId, moduleId);
+
+    return result;
+  }
+
+  // ------------------ MODULE PROGRESS ------------------
+  async upsertModuleProgress(userId: string, moduleId: string, completed = false, xpEarned = 0) {
     return this.prisma.userModuleProgress.upsert({
       where: { userId_moduleId: { userId, moduleId } },
       update: { completed, xpEarned, completedAt: completed ? new Date() : null },
@@ -105,75 +170,80 @@ export class TrainingService {
     });
   }
 
-async recordProgress(
-  userId: string,
-  moduleId: string,
-  type: string,
-  itemId: string,
-  status: string,
-  xp: number,
-  score?: number,
-) {
-  switch (type) {
-    case 'MODULE':
-      return this.upsertModuleProgress(userId, moduleId, status === 'COMPLETED', xp);
+  private async updateModuleCompletion(userId: string, moduleId: string) {
+    const flashcards = await this.prisma.flashcard.findMany({ where: { moduleId } });
+    const videos = await this.prisma.video.findMany({ where: { moduleId } });
+    const quizzes = await this.prisma.quiz.findMany({ where: { moduleId } });
 
-    case 'FLASHCARD':
-      return this.prisma.userFlashcardProgress.upsert({
-        where: { userId_flashcardId: { userId, flashcardId: itemId } },
-        update: {
-          mastered: status === 'MASTERED',
-          xpEarned: xp,
-          completedAt: status === 'MASTERED' ? new Date() : null,
-        },
-        create: {
-          userId,
-          flashcardId: itemId,
-          mastered: status === 'MASTERED',
-          xpEarned: xp,
-          completedAt: status === 'MASTERED' ? new Date() : null,
-        },
-      });
+    const completedFlashcards = await this.prisma.userFlashcardProgress.count({
+      where: { userId, flashcardId: { in: flashcards.map(f => f.id) }, mastered: true },
+    });
+    const completedVideos = await this.prisma.userVideoProgress.count({
+      where: { userId, videoId: { in: videos.map(v => v.id) }, watched: true },
+    });
+    const completedQuizzes = await this.prisma.userQuizProgress.count({
+      where: { userId, quizId: { in: quizzes.map(q => q.id) }, completedAt: { not: null } },
+    });
 
-    case 'VIDEO':
-      return this.prisma.userVideoProgress.upsert({
-        where: { userId_videoId: { userId, videoId: itemId } },
-        update: {
-          watched: status === 'COMPLETED', // ✅ fixed
-          xpEarned: xp,
-          completedAt: status === 'COMPLETED' ? new Date() : null,
-        },
-        create: {
-          userId,
-          videoId: itemId,
-          watched: status === 'COMPLETED', // ✅ fixed
-          xpEarned: xp,
-          completedAt: status === 'COMPLETED' ? new Date() : null,
-        },
-      });
+    const allItemsCompleted =
+      completedFlashcards === flashcards.length &&
+      completedVideos === videos.length &&
+      completedQuizzes === quizzes.length;
 
-    case 'QUIZ':
-      return this.prisma.userQuizProgress.upsert({
-        where: { userId_quizId: { userId, quizId: itemId } },
-        update: {
-          score: status === 'COMPLETED' ? score ?? 0 : null, // ✅ fixed
-          xpEarned: xp,
-          completedAt: status === 'COMPLETED' ? new Date() : null,
-        },
-        create: {
-          userId,
-          quizId: itemId,
-          score: status === 'COMPLETED' ? score ?? 0 : null,
-          xpEarned: xp,
-          completedAt: status === 'COMPLETED' ? new Date() : null,
-        },
-      });
+    const flashcardsXP = await this.prisma.userFlashcardProgress.aggregate({
+      where: { userId, flashcardId: { in: flashcards.map(f => f.id) } },
+      _sum: { xpEarned: true },
+    });
+    const videosXP = await this.prisma.userVideoProgress.aggregate({
+      where: { userId, videoId: { in: videos.map(v => v.id) } },
+      _sum: { xpEarned: true },
+    });
+    const quizzesXP = await this.prisma.userQuizProgress.aggregate({
+      where: { userId, quizId: { in: quizzes.map(q => q.id) } },
+      _sum: { xpEarned: true },
+    });
 
-    default:
-      throw new Error(`Unsupported progress type: ${type}`);
+    const totalXP =
+      (flashcardsXP._sum?.xpEarned || 0) +
+      (videosXP._sum?.xpEarned || 0) +
+      (quizzesXP._sum?.xpEarned || 0);
+
+    await this.upsertModuleProgress(userId, moduleId, allItemsCompleted, totalXP);
   }
-}
 
+  async getUserOverallProgress(userId: string, role: Role) {
+    const totalModules = await this.prisma.trainingModule.count({ where: { role } });
+
+    const completedModules = await this.prisma.userModuleProgress.count({
+      where: { userId, completed: true },
+    });
+
+    const flashcardsXP = await this.prisma.userFlashcardProgress.aggregate({
+      where: { userId },
+      _sum: { xpEarned: true },
+    });
+    const videosXP = await this.prisma.userVideoProgress.aggregate({
+      where: { userId },
+      _sum: { xpEarned: true },
+    });
+    const quizzesXP = await this.prisma.userQuizProgress.aggregate({
+      where: { userId },
+      _sum: { xpEarned: true },
+    });
+
+    const xp =
+      (flashcardsXP._sum?.xpEarned || 0) +
+      (videosXP._sum?.xpEarned || 0) +
+      (quizzesXP._sum?.xpEarned || 0);
+
+    const level = Math.floor(xp / 100) + 1;
+    const xpToNext = 100;
+
+    const streak = await this.calculateStreak(userId);
+    const achievements = await this.getRecentAchievements(userId);
+
+    return { level, xp, xpToNext, streak, completedModules, totalModules, achievements };
+  }
 
   // ------------------ FLASHCARDS ------------------
   async addFlashcard(moduleId: string, question: string, answer: string) {
@@ -218,24 +288,15 @@ async recordProgress(
     answer?: string,
     options?: { text: string; isCorrect: boolean }[],
   ) {
-    const createdQuestion = await this.prisma.quizQuestion.create({
-      data: { quizId, type, question, answer },
-    });
+    const createdQuestion = await this.prisma.quizQuestion.create({ data: { quizId, type, question, answer } });
 
     if (type === 'MCQ' && options?.length) {
       await this.prisma.quizOption.createMany({
-        data: options.map(o => ({
-          questionId: createdQuestion.id,
-          text: o.text,
-          isCorrect: o.isCorrect,
-        })),
+        data: options.map(o => ({ questionId: createdQuestion.id, text: o.text, isCorrect: o.isCorrect })),
       });
     }
 
-    return this.prisma.quizQuestion.findUnique({
-      where: { id: createdQuestion.id },
-      include: { options: true },
-    });
+    return this.prisma.quizQuestion.findUnique({ where: { id: createdQuestion.id }, include: { options: true } });
   }
 
   async deleteQuizQuestion(id: string) {
@@ -249,6 +310,17 @@ async recordProgress(
 
   async deleteQuizOption(id: string) {
     return this.prisma.quizOption.delete({ where: { id } });
+  }
+
+  // ------------------ HELPER METHODS ------------------
+  async calculateStreak(userId: string) {
+    // Placeholder
+    return 0;
+  }
+
+  async getRecentAchievements(userId: string) {
+    // Placeholder
+    return [];
   }
 }
 

@@ -60,6 +60,13 @@ export default function CitizenModulePage() {
         { moduleId, type, itemId, status, xp },
         { headers: { Authorization: `Bearer ${token}` } }
       );
+      
+      // Update local stats immediately for better UX
+      setUserStats(prev => ({
+        ...prev,
+        xp: prev.xp + xp,
+        completedItems: prev.completedItems + 1
+      }));
     } catch (err) {
       console.error('Failed to record progress', err);
     }
@@ -77,7 +84,17 @@ export default function CitizenModulePage() {
       setQuizzes(mod.quizzes || []);
 
       const totalItems = (mod.flashcards?.length || 0) + (mod.videos?.length || 0) + (mod.quizzes?.length || 0);
-      setUserStats(prev => ({ ...prev, totalItems }));
+      
+      // Calculate completed items from progress data
+      const progress = mod.userProgress?.[0];
+      const completedItems = progress?.completed ? totalItems : 0;
+      
+      setUserStats(prev => ({ 
+        ...prev, 
+        totalItems,
+        completedItems,
+        xp: progress?.xpEarned || 0
+      }));
 
       setLoading(false);
     } catch (err: any) {
@@ -117,7 +134,6 @@ export default function CitizenModulePage() {
     if (masteredCards.has(index)) return; // prevent duplicate
 
     setMasteredCards(prev => new Set([...prev, index]));
-    setUserStats(prev => ({ ...prev, xp: prev.xp + 10, completedItems: prev.completedItems + 1 }));
     recordProgress('FLASHCARD', flashcards[index].id, 'MASTERED', 10);
 
     setShowCelebration(true);
@@ -125,7 +141,6 @@ export default function CitizenModulePage() {
   };
 
   const handleVideoWatched = (videoId: string) => {
-    setUserStats(prev => ({ ...prev, xp: prev.xp + 15, completedItems: prev.completedItems + 1 }));
     recordProgress('VIDEO', videoId, 'COMPLETED', 15);
 
     setShowCelebration(true);
@@ -144,7 +159,6 @@ export default function CitizenModulePage() {
 
     if (isCorrect) {
       setScore(prev => prev + 1);
-      setUserStats(prev => ({ ...prev, xp: prev.xp + 25 }));
     }
 
     setSubmitted(true);
@@ -164,12 +178,7 @@ export default function CitizenModulePage() {
 
       const accuracy = (score / quiz.questions.length) * 100;
       const bonusXP = accuracy >= 80 ? 50 : accuracy >= 60 ? 25 : 10;
-      setUserStats(prev => ({
-        ...prev,
-        xp: prev.xp + bonusXP,
-        accuracy,
-        completedItems: prev.completedItems + 1
-      }));
+      setUserStats(prev => ({ ...prev, accuracy }));
 
       recordProgress('QUIZ', quiz.id, 'COMPLETED', score * 25 + bonusXP);
     }
@@ -418,7 +427,7 @@ export default function CitizenModulePage() {
                           className="game-button w-full py-3"
                           onClick={() => handleVideoWatched(video.id)}
                         >
-                          Mark as Watched (+15 XP)
+                          Complete Video (+15 XP)
                         </button>
                       </div>
                     );
@@ -574,3 +583,4 @@ export default function CitizenModulePage() {
     </RoleGuard>
   );
 }
+

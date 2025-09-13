@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict rDjecUdB6ldBUWRf0hy9cBVsWFM8UPZabPYV23fkJRWFjjjXWQo6fW9LiZPmg5d
+\restrict SKiyJ46dy0fcTbXe92sLLa1RqUx2v9JG7f9WmjQMM1pWXzt6nTQ7L8ROsyghWM6
 
 -- Dumped from database version 16.10 (Ubuntu 16.10-0ubuntu0.24.04.1)
 -- Dumped by pg_dump version 16.10 (Ubuntu 16.10-0ubuntu0.24.04.1)
@@ -130,11 +130,77 @@ CREATE TABLE public."User" (
     gender text,
     "createdAt" timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     password text NOT NULL,
-    role public."Role" DEFAULT 'CITIZEN'::public."Role" NOT NULL
+    role public."Role" DEFAULT 'CITIZEN'::public."Role" NOT NULL,
+    "totalXp" integer DEFAULT 0 NOT NULL
 );
 
 
 ALTER TABLE public."User" OWNER TO projectgreen_user;
+
+--
+-- Name: UserFlashcardProgress; Type: TABLE; Schema: public; Owner: projectgreen_user
+--
+
+CREATE TABLE public."UserFlashcardProgress" (
+    id text NOT NULL,
+    "userId" text NOT NULL,
+    "flashcardId" text NOT NULL,
+    mastered boolean DEFAULT false NOT NULL,
+    "xpEarned" integer DEFAULT 0 NOT NULL,
+    "completedAt" timestamp(3) without time zone
+);
+
+
+ALTER TABLE public."UserFlashcardProgress" OWNER TO projectgreen_user;
+
+--
+-- Name: UserModuleProgress; Type: TABLE; Schema: public; Owner: projectgreen_user
+--
+
+CREATE TABLE public."UserModuleProgress" (
+    id text NOT NULL,
+    "userId" text NOT NULL,
+    "moduleId" text NOT NULL,
+    completed boolean DEFAULT false NOT NULL,
+    "xpEarned" integer DEFAULT 0 NOT NULL,
+    "completedAt" timestamp(3) without time zone
+);
+
+
+ALTER TABLE public."UserModuleProgress" OWNER TO projectgreen_user;
+
+--
+-- Name: UserQuizProgress; Type: TABLE; Schema: public; Owner: projectgreen_user
+--
+
+CREATE TABLE public."UserQuizProgress" (
+    id text NOT NULL,
+    "userId" text NOT NULL,
+    "quizId" text NOT NULL,
+    score integer,
+    accuracy double precision,
+    "xpEarned" integer DEFAULT 0 NOT NULL,
+    "completedAt" timestamp(3) without time zone
+);
+
+
+ALTER TABLE public."UserQuizProgress" OWNER TO projectgreen_user;
+
+--
+-- Name: UserVideoProgress; Type: TABLE; Schema: public; Owner: projectgreen_user
+--
+
+CREATE TABLE public."UserVideoProgress" (
+    id text NOT NULL,
+    "userId" text NOT NULL,
+    "videoId" text NOT NULL,
+    watched boolean DEFAULT false NOT NULL,
+    "xpEarned" integer DEFAULT 0 NOT NULL,
+    "completedAt" timestamp(3) without time zone
+);
+
+
+ALTER TABLE public."UserVideoProgress" OWNER TO projectgreen_user;
 
 --
 -- Name: Video; Type: TABLE; Schema: public; Owner: projectgreen_user
@@ -236,10 +302,45 @@ f10d4e09-ea74-4045-af5d-e68bfe91e377	Module 1	WORKER	2025-09-12 10:12:35.979
 -- Data for Name: User; Type: TABLE DATA; Schema: public; Owner: projectgreen_user
 --
 
-COPY public."User" (id, name, email, phone, age, gender, "createdAt", password, role) FROM stdin;
-d69b3b47-6d06-4ca1-8dcc-7b8012ef714b	Super Admin	admin@projectgreen.com	+911234567890	\N	\N	2025-09-11 17:18:54.969	$2b$10$EAipv55bAv6zQZ.jHTSJOOOqNEanJwq91oBCEsmcrE0F.zZmjcbpG	ADMIN
-d2e8d699-e1fd-49bf-9ede-ff6eb0cf34b2	Kaushik	abc@mail.com	+918876076788	\N	\N	2025-09-12 06:55:26.065	$2b$10$5UtlwEaO.hkxtF1/LVP7zOZs1gs6QGehl5fHMdv/D5s2iUPlBkOJa	CITIZEN
-c6902f19-5fcd-4015-9e53-d1cbe4961948	Mintu	mintu@mail.com	+919707455784	\N	\N	2025-09-12 15:01:36.443	$2b$10$WbdoYKTufLf2c0dqevstzuVEGoJrY.FkhurRX5O9xFzcvlZYwqQ5q	WORKER
+COPY public."User" (id, name, email, phone, age, gender, "createdAt", password, role, "totalXp") FROM stdin;
+d69b3b47-6d06-4ca1-8dcc-7b8012ef714b	Super Admin	admin@projectgreen.com	+911234567890	\N	\N	2025-09-11 17:18:54.969	$2b$10$EAipv55bAv6zQZ.jHTSJOOOqNEanJwq91oBCEsmcrE0F.zZmjcbpG	ADMIN	0
+d2e8d699-e1fd-49bf-9ede-ff6eb0cf34b2	Kaushik	abc@mail.com	+918876076788	\N	\N	2025-09-12 06:55:26.065	$2b$10$5UtlwEaO.hkxtF1/LVP7zOZs1gs6QGehl5fHMdv/D5s2iUPlBkOJa	CITIZEN	0
+c6902f19-5fcd-4015-9e53-d1cbe4961948	Mintu	mintu@mail.com	+919707455784	\N	\N	2025-09-12 15:01:36.443	$2b$10$WbdoYKTufLf2c0dqevstzuVEGoJrY.FkhurRX5O9xFzcvlZYwqQ5q	WORKER	0
+\.
+
+
+--
+-- Data for Name: UserFlashcardProgress; Type: TABLE DATA; Schema: public; Owner: projectgreen_user
+--
+
+COPY public."UserFlashcardProgress" (id, "userId", "flashcardId", mastered, "xpEarned", "completedAt") FROM stdin;
+22ff4f12-b9c9-414a-bb24-a64b4028ff7a	d2e8d699-e1fd-49bf-9ede-ff6eb0cf34b2	e5854dd2-1a3b-4734-ba53-32833bee1d4d	t	10	2025-09-12 20:55:13.929
+\.
+
+
+--
+-- Data for Name: UserModuleProgress; Type: TABLE DATA; Schema: public; Owner: projectgreen_user
+--
+
+COPY public."UserModuleProgress" (id, "userId", "moduleId", completed, "xpEarned", "completedAt") FROM stdin;
+\.
+
+
+--
+-- Data for Name: UserQuizProgress; Type: TABLE DATA; Schema: public; Owner: projectgreen_user
+--
+
+COPY public."UserQuizProgress" (id, "userId", "quizId", score, accuracy, "xpEarned", "completedAt") FROM stdin;
+0c323a92-5574-41b1-9036-aa7841257951	d2e8d699-e1fd-49bf-9ede-ff6eb0cf34b2	914a8a29-1cbe-4736-a97a-ea79f7418561	0	\N	100	2025-09-12 20:55:33.45
+\.
+
+
+--
+-- Data for Name: UserVideoProgress; Type: TABLE DATA; Schema: public; Owner: projectgreen_user
+--
+
+COPY public."UserVideoProgress" (id, "userId", "videoId", watched, "xpEarned", "completedAt") FROM stdin;
+f8804d15-23c0-4048-bbdb-ff75e689c32f	d2e8d699-e1fd-49bf-9ede-ff6eb0cf34b2	b9aca2af-b9f7-4f8a-9f89-916128397012	t	15	2025-09-12 20:55:19.713
 \.
 
 
@@ -261,6 +362,7 @@ a10e58ba-b20a-440c-9366-86c1d348076a	af152961c1e404a763cc9091594014b2c82e5158b91
 6c4101a1-28c1-4328-bd4a-2cf81e466d03	a5ce9d07414da497803e8f730fac0648c6c12e8aef01bcc78c55aabdcf2330f7	2025-09-10 18:15:10.619326+05:30	20250910124510_add_password_to_user	\N	\N	2025-09-10 18:15:10.613761+05:30	1
 257cc182-c6cc-4d59-b179-55872213e275	e39e133ccf9f432d09ef378009cbc38a8207380a9f147377d66b4d05d0e1ee6d	2025-09-11 10:56:23.959199+05:30	20250911052623_add_role_to_user	\N	\N	2025-09-11 10:56:23.955674+05:30	1
 5a1c51aa-3a64-417c-8de5-0dea5c128a44	8f24ab3e34e2fbba08689042c867b62d13488ec7cbb67271c147f261fb7a4ab0	2025-09-11 20:34:21.372154+05:30	20250911150421_add_training_module	\N	\N	2025-09-11 20:34:21.353445+05:30	1
+a685c75e-a802-4cf1-bf91-0e6219ef8694	1a2663e2fabdc9ec8041242514a08e0de16f1b603eee4303d57982c9a8a674e7	2025-09-12 23:21:55.34632+05:30	20250912175155_add_user_progress	\N	\N	2025-09-12 23:21:55.318169+05:30	1
 \.
 
 
@@ -305,6 +407,38 @@ ALTER TABLE ONLY public."TrainingModule"
 
 
 --
+-- Name: UserFlashcardProgress UserFlashcardProgress_pkey; Type: CONSTRAINT; Schema: public; Owner: projectgreen_user
+--
+
+ALTER TABLE ONLY public."UserFlashcardProgress"
+    ADD CONSTRAINT "UserFlashcardProgress_pkey" PRIMARY KEY (id);
+
+
+--
+-- Name: UserModuleProgress UserModuleProgress_pkey; Type: CONSTRAINT; Schema: public; Owner: projectgreen_user
+--
+
+ALTER TABLE ONLY public."UserModuleProgress"
+    ADD CONSTRAINT "UserModuleProgress_pkey" PRIMARY KEY (id);
+
+
+--
+-- Name: UserQuizProgress UserQuizProgress_pkey; Type: CONSTRAINT; Schema: public; Owner: projectgreen_user
+--
+
+ALTER TABLE ONLY public."UserQuizProgress"
+    ADD CONSTRAINT "UserQuizProgress_pkey" PRIMARY KEY (id);
+
+
+--
+-- Name: UserVideoProgress UserVideoProgress_pkey; Type: CONSTRAINT; Schema: public; Owner: projectgreen_user
+--
+
+ALTER TABLE ONLY public."UserVideoProgress"
+    ADD CONSTRAINT "UserVideoProgress_pkey" PRIMARY KEY (id);
+
+
+--
 -- Name: User User_pkey; Type: CONSTRAINT; Schema: public; Owner: projectgreen_user
 --
 
@@ -326,6 +460,34 @@ ALTER TABLE ONLY public."Video"
 
 ALTER TABLE ONLY public._prisma_migrations
     ADD CONSTRAINT _prisma_migrations_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: UserFlashcardProgress_userId_flashcardId_key; Type: INDEX; Schema: public; Owner: projectgreen_user
+--
+
+CREATE UNIQUE INDEX "UserFlashcardProgress_userId_flashcardId_key" ON public."UserFlashcardProgress" USING btree ("userId", "flashcardId");
+
+
+--
+-- Name: UserModuleProgress_userId_moduleId_key; Type: INDEX; Schema: public; Owner: projectgreen_user
+--
+
+CREATE UNIQUE INDEX "UserModuleProgress_userId_moduleId_key" ON public."UserModuleProgress" USING btree ("userId", "moduleId");
+
+
+--
+-- Name: UserQuizProgress_userId_quizId_key; Type: INDEX; Schema: public; Owner: projectgreen_user
+--
+
+CREATE UNIQUE INDEX "UserQuizProgress_userId_quizId_key" ON public."UserQuizProgress" USING btree ("userId", "quizId");
+
+
+--
+-- Name: UserVideoProgress_userId_videoId_key; Type: INDEX; Schema: public; Owner: projectgreen_user
+--
+
+CREATE UNIQUE INDEX "UserVideoProgress_userId_videoId_key" ON public."UserVideoProgress" USING btree ("userId", "videoId");
 
 
 --
@@ -375,6 +537,70 @@ ALTER TABLE ONLY public."Quiz"
 
 
 --
+-- Name: UserFlashcardProgress UserFlashcardProgress_flashcardId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: projectgreen_user
+--
+
+ALTER TABLE ONLY public."UserFlashcardProgress"
+    ADD CONSTRAINT "UserFlashcardProgress_flashcardId_fkey" FOREIGN KEY ("flashcardId") REFERENCES public."Flashcard"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: UserFlashcardProgress UserFlashcardProgress_userId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: projectgreen_user
+--
+
+ALTER TABLE ONLY public."UserFlashcardProgress"
+    ADD CONSTRAINT "UserFlashcardProgress_userId_fkey" FOREIGN KEY ("userId") REFERENCES public."User"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: UserModuleProgress UserModuleProgress_moduleId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: projectgreen_user
+--
+
+ALTER TABLE ONLY public."UserModuleProgress"
+    ADD CONSTRAINT "UserModuleProgress_moduleId_fkey" FOREIGN KEY ("moduleId") REFERENCES public."TrainingModule"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: UserModuleProgress UserModuleProgress_userId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: projectgreen_user
+--
+
+ALTER TABLE ONLY public."UserModuleProgress"
+    ADD CONSTRAINT "UserModuleProgress_userId_fkey" FOREIGN KEY ("userId") REFERENCES public."User"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: UserQuizProgress UserQuizProgress_quizId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: projectgreen_user
+--
+
+ALTER TABLE ONLY public."UserQuizProgress"
+    ADD CONSTRAINT "UserQuizProgress_quizId_fkey" FOREIGN KEY ("quizId") REFERENCES public."Quiz"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: UserQuizProgress UserQuizProgress_userId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: projectgreen_user
+--
+
+ALTER TABLE ONLY public."UserQuizProgress"
+    ADD CONSTRAINT "UserQuizProgress_userId_fkey" FOREIGN KEY ("userId") REFERENCES public."User"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: UserVideoProgress UserVideoProgress_userId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: projectgreen_user
+--
+
+ALTER TABLE ONLY public."UserVideoProgress"
+    ADD CONSTRAINT "UserVideoProgress_userId_fkey" FOREIGN KEY ("userId") REFERENCES public."User"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: UserVideoProgress UserVideoProgress_videoId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: projectgreen_user
+--
+
+ALTER TABLE ONLY public."UserVideoProgress"
+    ADD CONSTRAINT "UserVideoProgress_videoId_fkey" FOREIGN KEY ("videoId") REFERENCES public."Video"(id) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
 -- Name: Video Video_moduleId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: projectgreen_user
 --
 
@@ -386,5 +612,5 @@ ALTER TABLE ONLY public."Video"
 -- PostgreSQL database dump complete
 --
 
-\unrestrict rDjecUdB6ldBUWRf0hy9cBVsWFM8UPZabPYV23fkJRWFjjjXWQo6fW9LiZPmg5d
+\unrestrict SKiyJ46dy0fcTbXe92sLLa1RqUx2v9JG7f9WmjQMM1pWXzt6nTQ7L8ROsyghWM6
 
