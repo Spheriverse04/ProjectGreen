@@ -15,6 +15,12 @@ interface UserStats {
   achievements: string[];
 }
 
+interface UserRank {
+  rank: number;
+  xp: number;
+  name: string;
+}
+
 interface Particle {
   id: number;
   x: number;
@@ -33,19 +39,23 @@ export default function CitizenDashboard() {
     totalModules: 0,
     achievements: [],
   });
+  const [userRank, setUserRank] = useState<UserRank | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [particles, setParticles] = useState<Particle[]>([]);
 
-  const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+  const token =
+    typeof window !== 'undefined'
+      ? localStorage.getItem('access_token')
+      : null;
 
   const fetchUserProgress = async () => {
     setLoading(true);
     try {
+      // fetch progress
       const res = await api.get('/training/user/progress', {
         headers: { Authorization: `Bearer ${token}` },
       });
-
       const progress = res.data;
       setUserStats({
         level: progress.level || 1,
@@ -56,6 +66,13 @@ export default function CitizenDashboard() {
         totalModules: progress.totalModules || 0,
         achievements: progress.achievements || [],
       });
+
+      // fetch rank (new addition)
+      const rankRes = await api.get('/training/leaderboard/me', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setUserRank(rankRes.data);
+
       setError('');
     } catch (err: any) {
       setError('Failed to load progress data');
@@ -101,7 +118,10 @@ export default function CitizenDashboard() {
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
           <div className="game-card p-8 text-center border-red-500/50 bg-red-900/20">
             <p className="text-red-400 text-xl mb-4">{error}</p>
-            <button onClick={fetchUserProgress} className="game-button px-6 py-3">
+            <button
+              onClick={fetchUserProgress}
+              className="game-button px-6 py-3"
+            >
               Retry
             </button>
           </div>
@@ -119,7 +139,11 @@ export default function CitizenDashboard() {
             <div
               key={p.id}
               className="particle"
-              style={{ left: `${p.x}%`, top: `${p.y}%`, animationDelay: `${p.delay}s` }}
+              style={{
+                left: `${p.x}%`,
+                top: `${p.y}%`,
+                animationDelay: `${p.delay}s`,
+              }}
             />
           ))}
         </div>
@@ -146,26 +170,52 @@ export default function CitizenDashboard() {
                       Level {userStats.level}
                     </div>
                   </div>
-                  <div className="streak-counter">🔥 {userStats.streak} Day Streak</div>
+                  <div className="streak-counter">
+                    🔥 {userStats.streak} Day Streak
+                  </div>
                 </div>
               </div>
 
               {/* XP Bar */}
               <div className="mt-6">
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-white font-semibold">Experience Points</span>
+                  <span className="text-white font-semibold">
+                    Experience Points
+                  </span>
                   <span className="text-purple-300">
                     {userStats.xp} / {userStats.xpToNext} XP
                   </span>
                 </div>
                 <div className="xp-bar">
-                  <div className="xp-fill" style={{ width: `${xpPercentage}%` }} />
+                  <div
+                    className="xp-fill"
+                    style={{ width: `${xpPercentage}%` }}
+                  />
                 </div>
               </div>
 
+              {/* My Rank (new section) */}
+              {userRank && (
+                <div className="mt-6">
+                  <h3 className="text-white font-semibold mb-2">
+                    Your Current Rank
+                  </h3>
+                  <div className="flex items-center justify-between p-4 bg-slate-800/50 rounded-xl border border-purple-500/30">
+                    <span className="text-purple-300 font-bold text-lg">
+                      #{userRank.rank}
+                    </span>
+                    <span className="text-white">
+                      {userRank.name} ({userRank.xp} XP)
+                    </span>
+                  </div>
+                </div>
+              )}
+
               {/* Achievements */}
               <div className="mt-6">
-                <h3 className="text-white font-semibold mb-3">Recent Achievements</h3>
+                <h3 className="text-white font-semibold mb-3">
+                  Recent Achievements
+                </h3>
                 {userStats.achievements.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
                     {userStats.achievements.map((a, i) => (
@@ -185,6 +235,7 @@ export default function CitizenDashboard() {
 
           {/* Quick Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 slide-in-left">
+            {/* Modules */}
             <div className="game-card p-6 text-center">
               <div className="text-4xl mb-3">📚</div>
               <div className="text-2xl font-bold text-white mb-1">
@@ -199,9 +250,12 @@ export default function CitizenDashboard() {
               </div>
             </div>
 
+            {/* XP */}
             <div className="game-card p-6 text-center">
               <div className="text-4xl mb-3">⚡</div>
-              <div className="text-2xl font-bold text-white mb-1">{userStats.xp}</div>
+              <div className="text-2xl font-bold text-white mb-1">
+                {userStats.xp}
+              </div>
               <div className="text-gray-300">Total XP Earned</div>
               <div className="mt-3 text-sm text-purple-300">
                 {userStats.xp > 0
@@ -210,26 +264,36 @@ export default function CitizenDashboard() {
               </div>
             </div>
 
+            {/* Streak */}
             <div className="game-card p-6 text-center">
               <div className="text-4xl mb-3">🎯</div>
-              <div className="text-2xl font-bold text-white mb-1">{userStats.streak}</div>
+              <div className="text-2xl font-bold text-white mb-1">
+                {userStats.streak}
+              </div>
               <div className="text-gray-300">Day Streak</div>
               <div className="mt-3 text-sm text-green-300">
-                {userStats.streak > 0 ? 'Keep it up!' : 'Start your streak today!'}
+                {userStats.streak > 0
+                  ? 'Keep it up!'
+                  : 'Start your streak today!'}
               </div>
             </div>
           </div>
 
           {/* Main Actions */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 slide-in-right">
+            {/* Training Quest */}
             <div
               className="game-card p-8 cursor-pointer group hover:scale-105 transition-all duration-500"
               onClick={() => router.push('/auth/dashboard/citizen/training')}
             >
               <div className="flex items-center justify-between mb-6">
                 <div>
-                  <h2 className="text-3xl font-bold text-white mb-2">🎮 Training Quest</h2>
-                  <p className="text-gray-300">Continue your learning adventure</p>
+                  <h2 className="text-3xl font-bold text-white mb-2">
+                    🎮 Training Quest
+                  </h2>
+                  <p className="text-gray-300">
+                    Continue your learning adventure
+                  </p>
                 </div>
                 <div className="text-6xl group-hover:scale-110 transition-transform duration-300">
                   🚀
@@ -239,7 +303,9 @@ export default function CitizenDashboard() {
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-white">Progress</span>
-                  <span className="text-purple-300">{moduleProgress.toFixed(0)}%</span>
+                  <span className="text-purple-300">
+                    {moduleProgress.toFixed(0)}%
+                  </span>
                 </div>
                 <div className="w-full bg-slate-700 rounded-full h-3">
                   <div
@@ -248,7 +314,8 @@ export default function CitizenDashboard() {
                   />
                 </div>
                 <div className="text-sm text-gray-400">
-                  {userStats.totalModules - userStats.completedModules} modules remaining
+                  {userStats.totalModules - userStats.completedModules} modules
+                  remaining
                 </div>
               </div>
 
@@ -276,10 +343,13 @@ export default function CitizenDashboard() {
               )}
             </div>
 
+            {/* Daily Challenges */}
             <div className="game-card p-8">
               <div className="flex items-center justify-between mb-6">
                 <div>
-                  <h2 className="text-3xl font-bold text-white mb-2">⚔️ Daily Challenges</h2>
+                  <h2 className="text-3xl font-bold text-white mb-2">
+                    ⚔️ Daily Challenges
+                  </h2>
                   <p className="text-gray-300">Complete today's missions</p>
                 </div>
                 <div className="text-6xl">🎯</div>
@@ -327,9 +397,27 @@ export default function CitizenDashboard() {
               </div>
             </div>
           </div>
+
+          {/* Leaderboard CTA */}
+          <div className="slide-in-up">
+            <div className="game-card p-8 text-center">
+              <h2 className="text-3xl font-bold text-white mb-4">
+                🌟 See Where You Stand
+              </h2>
+              <p className="text-gray-300 mb-6">
+                Check the leaderboard to compare your progress with other Eco
+                Champions!
+              </p>
+              <button
+                className="game-button px-8 py-4 text-lg font-bold"
+                onClick={() => router.push('/auth/dashboard/citizen/leaderboard')}
+              >
+                View Leaderboard →
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </RoleGuard>
   );
 }
-

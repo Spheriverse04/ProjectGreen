@@ -4,50 +4,47 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/utils/axiosInstance';
 
+interface Module {
+  id: string;
+  title: string;
+  role: string; // 'CITIZEN' | 'WORKER'
+}
+
 export default function TrainingModulesPage() {
   const router = useRouter();
 
-  const [modules, setModules] = useState<any[]>([]);
+  const [modules, setModules] = useState<Module[]>([]);
   const [title, setTitle] = useState('');
-  const [role, setRole] = useState('CITIZEN');
+  const [role, setRole] = useState<'CITIZEN' | 'WORKER'>('CITIZEN');
   const [message, setMessage] = useState('');
   const [userRole, setUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Fetch modules
   const fetchModules = async () => {
+    setLoading(true);
     try {
       const token = localStorage.getItem('access_token');
       const res = await api.get('/training/modules', {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setModules(res.data);
+      setModules(res.data || []);
+      setMessage('');
     } catch (err: any) {
       setMessage(err.response?.data?.message || 'Failed to fetch modules');
+    } finally {
+      setLoading(false);
     }
   };
 
-  useEffect(() => {
-    const role = localStorage.getItem('role');
-    setUserRole(role);
-    setLoading(false);
-
-    if (role !== 'ADMIN') {
-      // Redirect non-admins
-      router.push('/auth/dashboard');
-    } else {
-      fetchModules();
-    }
-  }, [router]);
-
   // Create module (Admin only)
   const createModule = async () => {
-    if (!title) return setMessage('Title is required');
+    if (!title.trim()) return setMessage('Module title is required');
     try {
       const token = localStorage.getItem('access_token');
       await api.post(
         '/training/modules',
-        { title, role },
+        { title: title.trim(), role },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setTitle('');
@@ -61,6 +58,7 @@ export default function TrainingModulesPage() {
 
   // Delete module (Admin only)
   const deleteModule = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this module?')) return;
     try {
       const token = localStorage.getItem('access_token');
       await api.delete(`/training/modules/${id}`, {
@@ -73,9 +71,17 @@ export default function TrainingModulesPage() {
     }
   };
 
-  if (loading) {
-    return <p className="p-6">Loading...</p>;
-  }
+  useEffect(() => {
+    const role = localStorage.getItem('role');
+    setUserRole(role);
+    if (role !== 'ADMIN') {
+      router.push('/auth/dashboard'); // redirect non-admins
+    } else {
+      fetchModules();
+    }
+  }, [router]);
+
+  if (loading) return <p className="p-6">Loading modules...</p>;
 
   return (
     <div className="p-6">
@@ -94,7 +100,7 @@ export default function TrainingModulesPage() {
           />
           <select
             value={role}
-            onChange={(e) => setRole(e.target.value)}
+            onChange={(e) => setRole(e.target.value as 'CITIZEN' | 'WORKER')}
             className="w-full p-2 border rounded mb-2"
           >
             <option value="CITIZEN">Citizen</option>
@@ -102,7 +108,7 @@ export default function TrainingModulesPage() {
           </select>
           <button
             onClick={createModule}
-            className="px-4 py-2 bg-blue-600 text-white rounded"
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
           >
             Add Module
           </button>
@@ -119,7 +125,7 @@ export default function TrainingModulesPage() {
             {modules.map((m) => (
               <li
                 key={m.id}
-                className="p-4 border rounded flex justify-between items-center"
+                className="p-4 border rounded flex justify-between items-center hover:bg-gray-50 transition"
               >
                 <div>
                   <h3 className="font-bold">{m.title}</h3>
@@ -131,13 +137,13 @@ export default function TrainingModulesPage() {
                       onClick={() =>
                         router.push(`/auth/dashboard/admin/training/${m.id}`)
                       }
-                      className="px-3 py-1 bg-green-500 text-white rounded"
+                      className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600"
                     >
                       Manage
                     </button>
                     <button
                       onClick={() => deleteModule(m.id)}
-                      className="px-3 py-1 bg-red-500 text-white rounded"
+                      className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
                     >
                       Delete
                     </button>

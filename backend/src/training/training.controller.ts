@@ -22,10 +22,19 @@ export class TrainingController {
   }
 
   @Get('modules')
-  async getModules(@Query('role') role?: Role, @AuthUser() user?: any) {
-    const fetchRole = role || user?.role;
-    return this.trainingService.getModules(fetchRole, user?.sub);
+async getModules(@Query('role') role?: Role, @AuthUser() user?: any) {
+  let fetchRole: Role | undefined;
+
+  if (user.role === Role.ADMIN) {
+    // Admin can optionally filter by role, otherwise fetch all
+    fetchRole = role;
+  } else {
+    // Citizen/Worker can only fetch their own modules
+    fetchRole = user.role;
   }
+
+  return this.trainingService.getModules(fetchRole, user?.sub);
+}
 
   @Get('modules/:id')
   async getModule(@Param('id') id: string, @AuthUser() user?: any) {
@@ -163,5 +172,21 @@ export class TrainingController {
   async deleteQuizOption(@Param('id') id: string) {
     return this.trainingService.deleteQuizOption(id);
   }
+  
+// ------------------ LEADERBOARD ------------------
+@Get('leaderboard')
+async getLeaderboard(
+  @Query('limit') limit?: string,
+  @Query('role') role?: Role,
+) {
+  const parsedLimit = limit ? parseInt(limit, 10) : 10;
+  return this.trainingService.getLeaderboard(parsedLimit, role);
+}
+
+@Get('leaderboard/me')
+async getMyRank(@AuthUser() user: any) {
+  return this.trainingService.getMyRank(user.sub, user.role);
+}
+
 }
 

@@ -322,5 +322,61 @@ export class TrainingService {
     // Placeholder
     return [];
   }
+  
+// ------------------ LEADERBOARD ------------------
+async getLeaderboard(limit: number, role?: Role) {
+  const progress = await this.prisma.userModuleProgress.groupBy({
+    by: ['userId'],
+    _sum: { xpEarned: true },
+  });
+
+  const leaderboard = (
+    await Promise.all(
+      progress.map(async (p) => {
+        const user = await this.prisma.user.findUnique({
+          where: { id: p.userId },
+          select: { id: true, name: true, email: true, role: true },
+        });
+
+        if (!user) return null;
+        if (role && user.role !== role) return null;
+
+        return {
+          userId: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          xp: p._sum.xpEarned ?? 0,
+        };
+      }),
+    )
+  ).filter((u): u is NonNullable<typeof u> => u !== null);
+
+  return leaderboard
+    .sort((a, b) => b.xp - a.xp)
+    .slice(0, limit);
+}
+
+async getMyRank(userId: string, role: Role) {
+  const leaderboard = await this.getLeaderboard(1000, role);
+
+  const rank = leaderboard.findIndex((u) => u.userId === userId);
+
+  if (rank === -1) {
+    // User not found in leaderboard
+    return {
+      userId,
+      rank: null,
+      xp: 0,
+      message: 'Start training and contributing to enter the leaderboard!',
+    };
+  }
+
+  return {
+    rank: rank + 1,
+    totalUsers: leaderboard.length,
+    ...leaderboard[rank],
+  };
+}
 }
 
