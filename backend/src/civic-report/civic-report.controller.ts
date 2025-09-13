@@ -41,7 +41,7 @@ export class CivicReportController {
   async createReport(
     @UploadedFile() file: Express.Multer.File,
     @Body() body: any,
-    @AuthUser() authUser: { sub: string },
+    @AuthUser() authUser: { userId: string },
   ) {
     const { title, description, type, latitude, longitude } = body;
     if (!title || !latitude || !longitude || !type)
@@ -54,7 +54,7 @@ export class CivicReportController {
       latitude: parseFloat(latitude),
       longitude: parseFloat(longitude),
       imageUrl: file ? `/uploads/${file.filename}` : null,
-      createdById: authUser.sub,
+      createdById: authUser.userId,
     });
   }
 
@@ -70,14 +70,14 @@ export class CivicReportController {
 
   @Post(':id/support')
   @Roles('CITIZEN')
-  async supportReport(@Param('id') id: string, @AuthUser() authUser: { sub: string }) {
-    return this.civicReportService.supportReport(id, authUser.sub);
+  async supportReport(@Param('id') id: string, @AuthUser() authUser: { userId: string }) {
+    return this.civicReportService.supportReport(id, authUser.userId);
   }
 
   @Post(':id/oppose')
   @Roles('CITIZEN')
-  async opposeReport(@Param('id') id: string, @AuthUser() authUser: { sub: string }) {
-    return this.civicReportService.opposeReport(id, authUser.sub);
+  async opposeReport(@Param('id') id: string, @AuthUser() authUser: { userId: string }) {
+    return this.civicReportService.opposeReport(id, authUser.userId);
   }
 }
 

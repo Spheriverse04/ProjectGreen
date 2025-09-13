@@ -31,8 +31,25 @@ const CivicReportPage = () => {
   const [position, setPosition] = useState<{ lat: number; lng: number } | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'MINE' | 'OTHERS'>('MINE');
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-  const loggedInUserId = 'me'; // replace with actual user id
+  // Get actual user ID from token
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      try {
+        const token = localStorage.getItem('access_token');
+        if (token) {
+          const response = await axios.post('/auth/check', {}, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          setCurrentUserId(response.data.user.userId);
+        }
+      } catch (error) {
+        console.error('Failed to get current user:', error);
+      }
+    };
+    fetchCurrentUser();
+  }, []);
 
   const fetchReports = async () => {
     try {
@@ -58,13 +75,13 @@ const CivicReportPage = () => {
 
   const handleVote = async (reportId: string, type: 'support' | 'oppose') => {
     const report = reports.find(r => r.id === reportId);
-    if (report?.createdById === loggedInUserId) {
+    if (report?.createdById === currentUserId) {
       setMessage('❌ You cannot vote on your own report.');
       setTimeout(() => setMessage(null), 4000);
       return;
     }
 
-    const hasVoted = report?.supports?.some(s => s.userId === loggedInUserId);
+    const hasVoted = report?.supports?.some(s => s.userId === currentUserId);
     if (hasVoted) {
       setMessage(`❌ Already ${type}ed this report.`);
       setTimeout(() => setMessage(null), 4000);
@@ -88,8 +105,8 @@ const CivicReportPage = () => {
     return (
       <ul className="space-y-3">
         {list.map(r => {
-          const isOwnReport = r.createdById === loggedInUserId;
-          const hasVoted = r.supports?.some(s => s.userId === loggedInUserId);
+          const isOwnReport = r.createdById === currentUserId;
+          const hasVoted = r.supports?.some(s => s.userId === currentUserId);
           return (
             <li key={r.id} className="bg-gray-700 p-3 rounded text-white">
               <strong>{r.title}</strong> ({r.type.replace('_', ' ')})<br />
@@ -134,8 +151,8 @@ const CivicReportPage = () => {
     );
   };
 
-  const myReports = reports.filter(r => r.createdById === loggedInUserId);
-  const otherReports = reports.filter(r => r.createdById !== loggedInUserId);
+  const myReports = reports.filter(r => r.createdById === currentUserId);
+  const otherReports = reports.filter(r => r.createdById !== currentUserId);
 
   return (
     <RoleGuard role="CITIZEN">
@@ -148,7 +165,7 @@ const CivicReportPage = () => {
             reports={reports}
             refreshReports={fetchReports}
             userPosition={position}
-            loggedInUserId={loggedInUserId}
+            loggedInUserId={currentUserId}
           />
         </div>
 

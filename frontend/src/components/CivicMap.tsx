@@ -26,7 +26,7 @@ interface CivicMapProps {
   reports: CivicReport[];
   refreshReports: () => void;
   userPosition?: { lat: number; lng: number } | null;
-  loggedInUserId: string;
+  loggedInUserId: string | null;
 }
 
 // Dynamically import MapContainer and related components
@@ -100,12 +100,14 @@ const CivicMap: React.FC<CivicMapProps> = ({
   };
 
   const handleVote = async (id: string, type: 'support' | 'oppose', report: CivicReport) => {
+    if (!loggedInUserId) return;
+    
     if (report.createdById === loggedInUserId) return;
     if (report.supports?.some(s => s.userId === loggedInUserId)) return;
 
     try {
       await axios.post(`/civic-report/${id}/${type}`);
-      refreshReports(); // refresh both map and page
+      refreshReports(); // This will refresh both map and page data
     } catch (err) {
       console.error(err);
     }
@@ -147,6 +149,8 @@ const CivicMap: React.FC<CivicMapProps> = ({
         )}
 
         {reports.map(report => {
+          if (!loggedInUserId) return null;
+          
           const isOwnReport = report.createdById === loggedInUserId;
           const hasVoted = report.supports?.some(s => s.userId === loggedInUserId);
 
